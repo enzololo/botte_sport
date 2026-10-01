@@ -12,18 +12,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 URL_ACTIVITES = "https://u-sport.univ-nantes.fr/activites"
 
-# ===== TES CRÉNEAUX : ajoute ou enlève des lignes =====
-# "encadrant" : texte préféré dans la ligne ("" = le premier disponible)
+# ===== TES CRÉNEAUX =====
 CRENEAUX = [
     {"activite": "volley", "jour": "lundi", "heure": "20:30", "encadrant": "Encadrant ETUDIANT"},
     {"activite": "musculation", "jour": "jeudi", "heure": "19:00", "encadrant": "Romain MAHÉ"},
 ]
 
-# ===== OUVERTURE DES INSCRIPTIONS (heure de Paris) =====
-OUVERTURE = "00:00"     # le robot attend cette heure pile avant de chercher les places
-RETRY_MIN = 10          # puis réessaie pendant 10 minutes si les cases sont inactives
-PAUSE_RETRY = 3         # secondes entre deux essais
-# ======================================================
+RETRY_MIN = 10      # réessaie pendant 10 minutes si les cases sont inactives
+PAUSE_RETRY = 3     # secondes entre deux essais
+# ========================
 
 TZ = ZoneInfo("Europe/Paris")
 
@@ -60,29 +57,7 @@ def nettoyer(texte):
     return " ".join((texte or "").split())
 
 
-def heure_ouverture():
-    h, m = map(int, OUVERTURE.split(":"))
-    return datetime.now(TZ).replace(hour=h, minute=m, second=0, microsecond=0)
-
-
-def attendre_ouverture():
-    """Attend l'heure d'ouverture. Ne fait rien si elle est passée ou trop lointaine (test manuel)."""
-    reste = (heure_ouverture() - datetime.now(TZ)).total_seconds()
-    if reste <= 0:
-        print("Heure d'ouverture déjà passée, on y va.")
-        return
-    if reste > 30 * 60:
-        print(f"Ouverture dans plus de 30 min ({OUVERTURE}), pas d'attente (test manuel).")
-        return
-    print(f"Attente de l'ouverture à {OUVERTURE} (dans {int(reste)} s)...")
-    while reste > 0:
-        time.sleep(min(reste, 30))
-        reste = (heure_ouverture() - datetime.now(TZ)).total_seconds()
-    print("C'est l'heure !")
-
-
 def ouvrir(driver, url):
-    """Ouvre une page ; si le chargement traîne, on l'arrête et on continue."""
     try:
         driver.get(url)
     except TimeoutException:
@@ -154,7 +129,6 @@ def creneaux_cibles(driver, jour, heure):
 
 
 def reserver_creneau(driver, wait, c):
-    """Réserve un créneau. Lève CreneauComplet si aucune case n'est active."""
     print(f"\n=== Créneau : {nom(c)} ===")
 
     ouvrir(driver, URL_ACTIVITES)
@@ -183,7 +157,6 @@ def reserver_creneau(driver, wait, c):
         print(f"  [{'x' if coche else ' '}] {nettoyer(ligne.get_attribute('textContent'))}")
         candidats.append((ligne, case, coche))
 
-    # Déjà inscrit : rien à faire (cliquer désinscrirait)
     if any(coche for _, _, coche in candidats):
         print("ℹ️ Déjà inscrit à ce créneau, rien à faire.")
         return
@@ -203,10 +176,6 @@ def reserver_creneau(driver, wait, c):
     defiler_jusqu(driver, case)
     clic(driver, case)
     time.sleep(1)
-    try:
-        print(f"Case cochée après le clic : {case.is_selected()}")
-    except Exception:
-        pass
 
     print("Validation de la réservation...")
     bouton_oui = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, XPATH_OUI)))
@@ -217,7 +186,7 @@ def reserver_creneau(driver, wait, c):
 def inscrire(driver, wait, etat):
     restants, reussis, complets = etat["restants"], etat["reussis"], etat["complets"]
 
-    # Connexion (faite EN AVANCE, avant l'ouverture)
+    # Connexion
     print("Clic sur le bouton Connexion...")
     bouton_connexion = wait.until(
         EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Connexion')]"))
@@ -242,10 +211,7 @@ def inscrire(driver, wait, etat):
     time.sleep(3)
     fermer_popup(driver, timeout=5)
 
-    # Attente de l'ouverture des inscriptions
-    attendre_ouverture()
-
-    # Premier passage : chaque créneau une fois
+    # Inscription directe sans attente
     while restants:
         c = restants[0]
         try:
@@ -257,8 +223,8 @@ def inscrire(driver, wait, etat):
             complets.append(c)
         restants.pop(0)
 
-    # Réessais pendant RETRY_MIN minutes pour les créneaux sans case active
-    fin_retry = heure_ouverture() + timedelta(minutes=RETRY_MIN)
+    # Réessais pendant RETRY_MIN minutes si la case n'est pas encore cliquable
+    fin_retry = datetime.now(TZ) + timedelta(minutes=RETRY_MIN)
     while complets and datetime.now(TZ) < fin_retry:
         print(f"\nRéessai dans {PAUSE_RETRY} s ({len(complets)} créneau(x) en attente)...")
         time.sleep(PAUSE_RETRY)
@@ -295,13 +261,12 @@ def reserver():
             driver.set_page_load_timeout(60)
             ouvrir(driver, URL_ACTIVITES)
             inscrire(driver, wait, etat)
-            break  # tout a été traité sans erreur technique
+            break
 
         except Exception as e:
             message = str(e).splitlines()[0] if str(e) else ""
             print(f"❌ Erreur lors de la tentative {tentative_actuelle} : {type(e).__name__} {message}")
             try:
-                print(f"URL actuelle : {driver.current_url}")
                 driver.save_screenshot(f"erreur_tentative_{tentative_actuelle}.png")
                 with open(f"page_tentative_{tentative_actuelle}.html", "w", encoding="utf-8") as f:
                     f.write(driver.page_source)
@@ -321,8 +286,7 @@ def reserver():
     for c in etat["reussis"]:
         print(f"✅ {nom(c)}")
     for c in etat["complets"]:
-        print(f"⛔ {nom(c)} (plus de place)")
-        print(f"::error::Plus de place : {nom(c)}")
+        print(f"⛔ {nom(c)} (plus de place / inactif)")
     for c in etat["restants"]:
         print(f"❌ {nom(c)} (échec technique)")
 
@@ -331,6 +295,6 @@ def reserver():
 
 if __name__ == "__main__":
     if not os.environ.get("U_USER") or not os.environ.get("U_PASS"):
-        print("❌ Variables U_USER et U_PASS manquantes (à définir dans les secrets GitHub).")
+        print("❌ Variables U_USER et U_PASS manquantes.")
         sys.exit(1)
     sys.exit(0 if reserver() else 1)
