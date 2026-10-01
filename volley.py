@@ -333,4 +333,4 @@ if __name__ == "__main__":
     if not os.environ.get("U_USER") or not os.environ.get("U_PASS"):
         print("❌ Variables U_USER et U_PASS manquantes (à définir dans les secrets GitHub).")
         sys.exit(1)
-    sys.exit(0 if reserver() else 1) 
+    sys.exit(0 if reserver() else 1)
