@@ -2,9 +2,9 @@ name: Reservation Volley Nantes
 
 on:
   schedule:
-    # S'exécute tous les lundis à 20h01 UTC (soit 22h01 heure française en été)
-   - cron: '*/15 * * * *'   # TEST : toutes les 15 minutes
+    - cron: '*/15 * * * *'  # S'exécute environ toutes les 15 minutes
   workflow_dispatch:
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
           U_PASS: ${{ secrets.U_PASS }}
 
       - name: Récupérer la photo en cas d'erreur
-        uses : actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: capture-erreur
@@ -35,4 +35,3 @@ jobs:
             erreur_tentative_*.png
             page_tentative_*.html
           if-no-files-found: ignore
-
