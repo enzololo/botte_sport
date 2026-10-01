@@ -2,7 +2,10 @@ name: Reservation Volley Nantes
  
 on:
   schedule:
-    - cron: '03 23 * * 4'  # S'exécute environ toutes les 15 minutes
+    - cron: '15 23 * * 4'  # S'exécute environ toutes les 15 minutes
+    - cron: '16 23 * * 4'
+    - cron: '17 23 * * 4'
+    - cron: '18 23 * * 4'
   workflow_dispatch:
 
 jobs:
