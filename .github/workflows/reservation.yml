@@ -6,9 +6,9 @@ on:
     - cron: '20 15 * * 5'
     - cron: '50 15 * * 5'
     - cron: '33 17 * * 5'
-    - cron: '00 15 * * 3'
-    - cron: '30 15 * * 3'
-    - cron: '30 16 * * 3'
+    - cron: '50 15 * * 3'
+    - cron: '00 16 * * 3'
+    - cron: '00 17 * * 3'
     - cron: '30 18 * * 3'
   workflow_dispatch:
 
