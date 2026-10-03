@@ -15,7 +15,7 @@ URL_ACTIVITES = "https://u-sport.univ-nantes.fr/activites"
 # ===== TES CRÉNEAUX : ajoute ou enlève des lignes =====
 # "encadrant" : texte préféré dans la ligne ("" = le premier disponible)
 CRENEAUX = [
-    {"activite": "volley", "jour": "lundi", "heure": "19:00", "encadrant": "Encadrant ETUDIANT"},
+    {"activite": "volley", "jour": "mercredi", "heure": "19:00", "encadrant": "Loïc GUIFFAN, Julien MILLET"},
     {"activite": "volley", "jour": "vendredi", "heure": "18:00", "encadrant": "Encadrant ETUDIANT"},
 ]
 
